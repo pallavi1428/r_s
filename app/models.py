@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 class SearchRequest(BaseModel):
     query: str
@@ -9,10 +10,16 @@ class SearchResult(BaseModel):
     link: str
     snippet: str
 
+class RefineRequest(BaseModel):
+    query: str
+
+class RefineResponse(BaseModel):
+    refined_query: str
+
 class AIRequest(BaseModel):
     query: str
-    search_results: list[SearchResult]
+    search_results: List[SearchResult]
 
 class AIResponse(BaseModel):
     answer: str
-    reasoning: str  # Chain-of-Thought
+    reasoning: str
