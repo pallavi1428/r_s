@@ -120,7 +120,7 @@ async def query_refinement(request: SearchRequest):
         Return only the refined query without any additional text.
         """
         
-        response = await openai.ChatCompletion.acreate(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
