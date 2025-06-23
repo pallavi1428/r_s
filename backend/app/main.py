@@ -7,7 +7,7 @@ import os
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from typing import Optional, Union, List, Dict
-
+client = OpenAI()
 load_dotenv()
 
 app = FastAPI()
