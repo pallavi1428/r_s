@@ -36,27 +36,48 @@ class RSearchRequest(BaseModel):
 # Endpoints
 @app.post("/api/search")
 async def search(request: SearchRequest):
-    """Handle all search types (web, images, videos, etc.)"""
+    """Handle all search types with proper formatting"""
     try:
-        endpoint = "https://google.serper.dev/search"
-        if request.mode == "images":
-            endpoint = "https://google.serper.dev/images"
-        elif request.mode == "videos":
-            endpoint = "https://google.serper.dev/videos"
-        # Add other modes as needed
+        # Determine the endpoint based on search mode
+        endpoint_map = {
+            "images": "https://google.serper.dev/images",
+            "videos": "https://google.serper.dev/videos",
+            "places": "https://google.serper.dev/places",
+            "news": "https://google.serper.dev/news",
+            "shopping": "https://google.serper.dev/shopping",
+            "scholar": "https://google.serper.dev/search",
+            "patents": "https://google.serper.dev/search",
+            "web": "https://google.serper.dev/search",
+            "search": "https://google.serper.dev/search"
+        }
+        
+        endpoint = endpoint_map.get(request.mode, "https://google.serper.dev/search")
+        
+        # Prepare request parameters
+        params = {
+            "q": request.q,
+            "gl": request.gl,
+            "hl": request.hl
+        }
+        
+        # Add special parameters for scholar and patents
+        if request.mode == "scholar":
+            params["type"] = "scholar"
+            params["engine"] = "google_scholar"
+        elif request.mode == "patents":
+            params["type"] = "patents"
+            params["engine"] = "google"
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 endpoint,
                 headers={"X-API-KEY": os.getenv("SERPER_API_KEY")},
-                json={
-                    "q": request.q,
-                    "gl": request.gl,
-                    "hl": request.hl,
-                    "num": 10  # Default number of results
-                }
+                json=params
             )
+            
+            # Return raw data - let frontend handle formatting
             return response.json()
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
