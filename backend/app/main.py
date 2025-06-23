@@ -7,8 +7,15 @@ import os
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from typing import Optional, Union, List, Dict
-client = OpenAI()
+
+# Load environment variables FIRST
 load_dotenv()
+
+# Optional: Debug print to verify API key is loaded
+print("Loaded API Key:", os.getenv("OPENAI_API_KEY"))
+
+# Initialize OpenAI client AFTER loading environment
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI()
 
