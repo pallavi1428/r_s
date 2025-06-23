@@ -12,9 +12,6 @@ import traceback
 # Load environment variables FIRST
 load_dotenv()
 
-# Debug: verify API key is loaded
-print("Loaded API Key:", os.getenv("OPENAI_API_KEY"))
-
 # Initialize OpenAI client AFTER loading environment
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -23,7 +20,7 @@ app = FastAPI()
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,7 +37,7 @@ class RSearchRequest(BaseModel):
     searchTerm: str
     mode: str
     searchResults: Optional[List[Dict]] = None
-    prompt: Optional[str] = None  # ✅ Accept custom prompt
+    prompt: Optional[str] = None  # Accept custom prompt
 
 # Endpoints
 @app.post("/api/search")
@@ -91,14 +88,13 @@ import traceback
 async def rsearch(request: RSearchRequest):
     """Handle AI-enhanced search results"""
     try:
-        # If search results aren't provided, fetch them first
         if not request.searchResults:
             search_request = SearchRequest(q=request.searchTerm, mode=request.mode)
             search_results = await search(search_request)
             request.searchResults = search_results.get("organic", [])
 
-        # ✅ Use provided prompt if available, else create default
-        prompt = request.prompt or f"""
+        # Generate AI response
+        prompt = f"""
         Question: {request.searchTerm}
         Search Results: {request.searchResults}
 
@@ -111,10 +107,10 @@ async def rsearch(request: RSearchRequest):
         )
 
         return {"aiResponse": response.choices[0].message.content}
-
     except Exception as e:
+        import traceback
         print("Exception occurred:", str(e))
-        traceback.print_exc()  # This will print the full stack trace in the terminal
+        traceback.print_exc()  # to print the full stack trace in the terminal
         
         raise HTTPException(status_code=500, detail=str(e))
 
