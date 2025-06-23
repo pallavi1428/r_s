@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
-import openai
+from openai import OpenAI
 import os
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -99,8 +99,10 @@ async def rsearch(request: RSearchRequest):
         Based on the above search results, please provide a comprehensive answer.
         """
         
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-3.5-turbo",
+        client = OpenAI()
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
         
@@ -129,3 +131,8 @@ async def query_refinement(request: SearchRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# Add this to your FastAPI app
+@app.get("/")
+async def root():
+    return {"message": "API is running"}
