@@ -2,6 +2,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
+from fastapi import Request
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
 from openai import OpenAI
 import os
 from pydantic import BaseModel
@@ -36,8 +40,8 @@ class SearchRequest(BaseModel):
 class RSearchRequest(BaseModel):
     searchTerm: str
     mode: str
-    searchResults: Optional[List[Dict]] = None
-    prompt: Optional[str] = None  # Accept custom prompt
+    searchResults: Optional[dict] = None
+    prompt: Optional[str] = None
 
 # Endpoints
 @app.post("/api/search")
@@ -82,37 +86,58 @@ async def search(request: SearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-import traceback
-
 @app.post("/api/rsearch")
 async def rsearch(request: RSearchRequest):
-    """Handle AI-enhanced search results"""
     try:
         if not request.searchResults:
             search_request = SearchRequest(q=request.searchTerm, mode=request.mode)
             search_results = await search(search_request)
-            request.searchResults = search_results.get("organic", [])
+            request.searchResults = {
+                "organic": search_results.get("organic", []),
+                "knowledgeGraph": search_results.get("knowledgeGraph", None)
+            }
 
-        # Generate AI response
+        # 🛠 Extract the organic results properly:
+        organic_results = request.searchResults.get("organic", [])
+
         prompt = f"""
         Question: {request.searchTerm}
-        Search Results: {request.searchResults}
+        Search Results: {organic_results}
 
         Based on the above search results, please provide a comprehensive answer.
         """
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        async def stream_openai():
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "gpt-4o",
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": True
+            }
 
-        return {"aiResponse": response.choices[0].message.content}
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[len("data: "):]
+                            if data == "[DONE]":
+                                break
+                            chunk = json.loads(data)
+                            content = chunk["choices"][0].get("delta", {}).get("content", "")
+                            if content:
+                                yield content
+
+        return StreamingResponse(stream_openai(), media_type="text/plain")
+
     except Exception as e:
-        import traceback
         print("Exception occurred:", str(e))
-        traceback.print_exc()  # to print the full stack trace in the terminal
-        
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.post("/api/query")
